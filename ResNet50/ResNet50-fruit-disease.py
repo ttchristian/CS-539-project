@@ -1,0 +1,258 @@
+import os
+import torch
+import torch.nn as nn
+import torchvision.transforms as transforms
+from torchvision.datasets import ImageFolder
+from torch.utils.data import DataLoader, Dataset
+from torchvision.models import resnet50, ResNet50_Weights
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+# define convert to RGB
+class ConvertToRGB:
+    def __call__(self, image):
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        return image
+    
+# define Muti-task ResNet  
+class MultiTaskResNet(nn.Module):
+    def __init__(self, base_model, num_classes_fruit, num_classes_health):
+        super(MultiTaskResNet, self).__init__()
+        self.backbone = nn.Sequential(*list(base_model.children()))[:-1]
+        self.flatten = nn.Flatten()
+        self.classifier_fruit = nn.Linear(base_model.fc.in_features, num_classes_fruit)
+        self.classifier_health = nn.Linear(base_model.fc.in_features,num_classes_health)
+
+    def forward(self,x):
+        features = self.backbone(x)
+        features = self.flatten(features)
+        out_fruit = self.classifier_fruit(features)
+        out_health = self.classifier_health(features)
+        return out_fruit, out_health
+
+# define muti-task dataset function
+class MultiTaskDataset(Dataset):
+    def __init__(self, imagefolder_dataset, idx_to_fruit_health):
+
+        self.base = imagefolder_dataset
+        self.idx_map = idx_to_fruit_health
+
+    def __getitem__(self, index):
+        image, class_idx = self.base[index]
+        fruit_id, health_id = self.idx_map[class_idx]
+        return image, torch.tensor(fruit_id), torch.tensor(health_id)
+
+    def __len__(self):
+        return len(self.base)
+    
+# hyperparameter
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+num_classes_fruit = 14
+num_classes_health = 2
+batch_size = 128
+lr = 1e-4
+max_epochs = 30
+early_stop_patience = 5
+
+# data augmentation
+transform = transforms.Compose([
+    ConvertToRGB(),
+    transforms.RandomResizedCrop(224, scale=(0.8, 1.0), ratio=(0.75, 1.33)),
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+    transforms.RandomRotation(degrees=15),
+    transforms.GaussianBlur(kernel_size=(3, 3), sigma=(0.1, 0.2)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225])
+])
+
+#  original data loader
+train_folder = ImageFolder("/home/chris/projects/fruit-disease-detect/fruit_disease_dataset/train", transform=transform)
+val_folder = ImageFolder("/home/chris/projects/fruit-disease-detect/fruit_disease_dataset/val", transform=transform)
+
+#  define class idx
+class_to_idx = train_folder.class_to_idx
+idx_to_fruit_health = {}
+fruit_name_to_id = {}
+next_fruit_id = 0
+
+for class_name, idx in class_to_idx.items():
+    parts = class_name.split('_')
+    fruit_part = '_'.join(parts[:-1])
+    health_part = parts[-1]
+
+    if fruit_part not in fruit_name_to_id:
+        fruit_name_to_id[fruit_part] = next_fruit_id
+        next_fruit_id +=1
+    fruit_id = fruit_name_to_id[fruit_part]
+    health_id = 0 if health_part.lower() =="healthy" else 1
+    idx_to_fruit_health[idx] = (fruit_id, health_id)
+
+# package to mutitask dataset
+train_dataset = MultiTaskDataset(train_folder, idx_to_fruit_health)
+val_dataset = MultiTaskDataset(val_folder, idx_to_fruit_health)
+
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_workers=8)
+
+# define model
+base_model = resnet50(weights=ResNet50_Weights.DEFAULT)
+model = MultiTaskResNet(base_model, num_classes_fruit, num_classes_health)
+model = model.to(device)
+
+criterion_fruit = nn.CrossEntropyLoss()
+criterion_health = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=2)
+
+# evaluate
+def evaluate(loader,epoch = None):
+    model.eval()
+    correct_fruit = 0
+    correct_health = 0
+    total = 0
+    with torch.no_grad():
+        for images, label_fruit, label_health in tqdm(train_loader, desc=f"Epoch {epoch}"):
+            images = images.to(device)
+
+            label_fruit = label_fruit.to(device)
+            label_health = label_health.to(device)
+
+
+            out_fruit, out_health = model(images)
+
+            _, pred_fruit = out_fruit.max(1)
+            _, pred_health = out_health.max(1)
+            correct_fruit += pred_fruit.eq(label_fruit).sum().item()
+            correct_health += pred_health.eq(label_health).sum().item()
+            total += images.size(0)
+
+            acc_fruit = correct_fruit / total
+            acc_health = correct_health / total
+    return acc_fruit, acc_health
+
+# write into log
+def log_line(message, log_path="training_log.txt"):
+    with open(log_path, "a") as f:
+        f.write(message + "\n")
+
+# train
+def train():
+    best_val_score = 0.0
+    trigger_times = 0
+    train_accuracies = []
+    val_accuracies = []
+    train_losses = []
+    log_path = "training_log.txt"
+
+    for epoch in range(1, max_epochs + 1):
+        model.train()
+        running_loss = 0.0 
+        correct_fruit = 0
+        correct_health = 0
+        total = 0
+
+        for images, label_fruit, label_health in tqdm(train_loader, desc=f"Epoch {epoch}"):
+            images = images.to(device)
+
+            label_fruit = label_fruit.to(device)
+            label_health = label_health.to(device)
+
+            optimizer.zero_grad()
+
+            out_fruit, out_health = model(images)
+            loss_fruit = criterion_fruit(out_fruit, label_fruit)
+            loss_health = criterion_health(out_health, label_health)
+            total_loss = loss_fruit + loss_health
+
+            total_loss.backward()
+            optimizer.step()
+
+            running_loss += total_loss.item()
+
+            _, pred_fruit = out_fruit.max(1)
+            _, pred_health = out_health.max(1)
+            correct_fruit += pred_fruit.eq(label_fruit).sum().item()
+            correct_health += pred_health.eq(label_health).sum().item()
+            total +=images.size(0)
+
+        train_acc_fruit = correct_fruit / total
+        train_acc_health = correct_health / total
+        val_acc_fruit, val_acc_health = evaluate(val_loader,epoch = epoch)
+        avg_loss = running_loss / len(train_loader)
+        current_lr = optimizer.param_groups[0]['lr']
+
+        train_accuracies.append((train_acc_fruit, train_acc_health))
+        val_accuracies.append((val_acc_fruit, val_acc_health))
+        train_losses.append(avg_loss)
+
+        log_msg = (
+            f"[Epoch {epoch}] Loss: {avg_loss:.4f}, "
+            f"Train Fruit Acc: {train_acc_fruit:.4f}, Train Health Acc: {train_acc_health:.4f}, "
+            f"Val Fruit Acc: {val_acc_fruit:.4f}, Val Health Acc: {val_acc_health:.4f}, "
+            f"LR: {current_lr:.6f}"
+        )
+        print(log_msg)
+        log_line(log_msg, log_path)
+
+        val_score = val_acc_fruit * val_acc_health ## calculate validation score w
+        scheduler.step(val_score)
+
+        if val_score > best_val_score:
+            best_val_score = val_score
+            trigger_times = 0
+            torch.save(model.state_dict(), "best_model.pth")
+            log_line(f"✅ Best model updated (Val score = {val_score:.4f})", log_path)
+        else:
+            trigger_times += 1
+            log_line(f"⚠️ No improvement for {trigger_times} epoch(s).", log_path)
+
+        if trigger_times >= early_stop_patience:
+            stop_msg = f"⏹️ Early stopping triggered at epoch {epoch}"
+            print(stop_msg)
+            log_line(stop_msg, log_path)
+            break
+
+    # draw graphic
+    epochs_range = range(1, len(train_accuracies) + 1)
+    plt.figure(figsize=(15, 5))
+
+    train_acc_fruit_list = [x[0] for x in train_accuracies]
+    train_acc_health_list = [x[1] for x in train_accuracies]
+    val_acc_fruit_list = [x[0] for x in val_accuracies]
+    val_acc_health_list = [x[1] for x in val_accuracies]
+
+    plt.subplot(1, 3, 1)
+    plt.plot(epochs_range, train_acc_fruit_list, label="Train Fruit Acc")
+    plt.plot(epochs_range, val_acc_fruit_list, label="Val Fruit Acc")
+    plt.title("Fruit Accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.legend()
+
+    plt.subplot(1, 3, 2)
+    plt.plot(epochs_range, train_acc_health_list, label="Train Health Acc")
+    plt.plot(epochs_range, val_acc_health_list, label="Val Health Acc")
+    plt.title("Health Accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.legend()
+
+    plt.subplot(1, 3, 3)
+    plt.plot(epochs_range, train_losses, label="Train Loss", color='orange')
+    plt.title("Training Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+
+    plt.tight_layout()
+    plt.savefig("training_curves_multitask.png")
+    plt.show()
+
+
+# start training
+if __name__ == "__main__":
+    train()
