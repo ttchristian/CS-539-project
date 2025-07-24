@@ -1,5 +1,7 @@
 # Fruit Scan AI with MobileNetV2
 
+Cristina Seoylemezian
+
 ---
 ## Environment Setup
 
@@ -21,6 +23,7 @@ Organize your dataset into subfolders by class. Then run `reduce_dataset.py` to 
 python reduce_dataset.py
 ```
 
+Update the dataset name with your dataset.
 The script will generate a new folder with the reduced dataset.
 
 ---
@@ -33,6 +36,8 @@ Run `main.py` to train the MobileNetV2 model:
 python main.py
 ```
 
+update dataset name with your dataset. 
+
 ---
 
 ## 4. Image Prediction
@@ -42,5 +47,5 @@ Use `predict.py` to classify an image with the trained model:
 ```bash
 python predict.py
 ```
-
+Update the image name with your own image.
 The program will output the predicted class and confidence score.
