@@ -8,22 +8,40 @@ from torchvision.models import resnet50, ResNet50_Weights
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+from PIL import Image
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="PIL.Image")
 
-# define convert to RGB
-class ConvertToRGB:
-    def __call__(self, image):
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        return image
+
+def safe_loader(path):
+    image = Image.open(path)
+    if image.mode != 'RGB':
+        image = image.convert('RGB') 
+    return image
+
     
 # define Muti-task ResNet  
 class MultiTaskResNet(nn.Module):
-    def __init__(self, base_model, num_classes_fruit, num_classes_health):
+    def __init__(self, base_model, num_classes_fruit, num_classes_health,freeze_mode):
         super(MultiTaskResNet, self).__init__()
         self.backbone = nn.Sequential(*list(base_model.children()))[:-1]
         self.flatten = nn.Flatten()
         self.classifier_fruit = nn.Linear(base_model.fc.in_features, num_classes_fruit)
         self.classifier_health = nn.Linear(base_model.fc.in_features,num_classes_health)
+        self.freeze_backbone(freeze_mode)
+        
+    def freeze_backbone(self,mode):
+        if mode == "all":
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+        elif mode == "partial":
+            for name, param in self.backbone.named_parameters():
+                if any(layer in name for layer in ["0", "1", "4", "5"]):  # conv1, bn1, layer1, layer2
+                    param.requires_grad = False
+        elif mode == "none":
+            pass  # do nothing
+        else:
+            raise ValueError(f"Unknown freeze mode: {mode}")    
 
     def forward(self,x):
         features = self.backbone(x)
@@ -68,10 +86,15 @@ transform = transforms.Compose([
     transforms.Normalize([0.485, 0.456, 0.406],
                          [0.229, 0.224, 0.225])
 ])
-
+transform2 = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225])
+])
 #  original data loader
 train_folder = ImageFolder("/home/chris/projects/fruit-disease-detect/fruit_disease_dataset/train", transform=transform)
-val_folder = ImageFolder("/home/chris/projects/fruit-disease-detect/fruit_disease_dataset/val", transform=transform)
+val_folder = ImageFolder("/home/chris/projects/fruit-disease-detect/fruit_disease_dataset/val", transform=transform2)
 
 #  define class idx
 class_to_idx = train_folder.class_to_idx
@@ -100,7 +123,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, num_wo
 
 # define model
 base_model = resnet50(weights=ResNet50_Weights.DEFAULT)
-model = MultiTaskResNet(base_model, num_classes_fruit, num_classes_health)
+model = MultiTaskResNet(base_model, num_classes_fruit, num_classes_health,freeze_mode="none")
 model = model.to(device)
 
 criterion_fruit = nn.CrossEntropyLoss()
@@ -205,13 +228,13 @@ def train():
             best_val_score = val_score
             trigger_times = 0
             torch.save(model.state_dict(), "best_model.pth")
-            log_line(f"✅ Best model updated (Val score = {val_score:.4f})", log_path)
+            log_line(f" Best model updated (Val score = {val_score:.4f})", log_path)
         else:
             trigger_times += 1
-            log_line(f"⚠️ No improvement for {trigger_times} epoch(s).", log_path)
+            log_line(f" No improvement for {trigger_times} epoch(s).", log_path)
 
         if trigger_times >= early_stop_patience:
-            stop_msg = f"⏹️ Early stopping triggered at epoch {epoch}"
+            stop_msg = f" Early stopping triggered at epoch {epoch}"
             print(stop_msg)
             log_line(stop_msg, log_path)
             break
