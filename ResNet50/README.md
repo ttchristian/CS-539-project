@@ -1,10 +1,18 @@
-File claim:
-data_split.py: By running this code, you can download the dataset from kaggle website and seperate them into train, validation and test set.(8:1:1)
+# Fruit Disease Detection using ResNet50 (Multi-Task Learning)
 
-data.py: By running this code, you can fix the double file extension. 
+This project uses a ResNet50-based deep learning model to classify **fruit types** and **health status (healthy or rotten)** from images. It implements **multi-task learning**, allowing simultaneous classification of two targets.
 
-test_acc.py: by running this code, you can test the model accuracy in test set
+---
 
-multi_task_gradcam.py: by running this code, you can get the grad-cam photo on dataset that model makes wrong prediction.
+## 📁 Project Structure
 
-ResNet50-fruit-disease.py: By running this code, you can train the model.
+```bash
+.
+├── data_split.py               # Download dataset and split into train/val/test (8:1:1)
+├── data.py                     # Fix double file extension in image files
+├── ResNet50-fruit-disease.py  # Train the multi-task ResNet50 model
+├── test_acc.py                 # Evaluate model accuracy on test set
+├── multi_task_gradcam.py      # Generate Grad-CAM visualizations for misclassified images
+├── model/                      # Folder to save trained models
+├── results/                    # Folder to save Grad-CAM outputs
+└── README.md
