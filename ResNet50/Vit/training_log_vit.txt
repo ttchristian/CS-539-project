@@ -1,0 +1,39 @@
+[Epoch 1] Loss: 0.3044, Train Fruit Acc: 0.9407, Train Health Acc: 0.9553, Val Fruit Acc: 0.9771, Val Health Acc: 0.9846, LR: 0.000100
+✅ Best model updated (Val score = 0.9808)
+[Epoch 2] Loss: 0.0727, Train Fruit Acc: 0.9888, Train Health Acc: 0.9870, Val Fruit Acc: 0.9843, Val Health Acc: 0.9832, LR: 0.000100
+✅ Best model updated (Val score = 0.9837)
+[Epoch 3] Loss: 0.0671, Train Fruit Acc: 0.9884, Train Health Acc: 0.9891, Val Fruit Acc: 0.9668, Val Health Acc: 0.9819, LR: 0.000100
+⚠️ No improvement for 1 epoch(s).
+[Epoch 4] Loss: 0.0508, Train Fruit Acc: 0.9902, Train Health Acc: 0.9933, Val Fruit Acc: 0.9853, Val Health Acc: 0.9897, LR: 0.000100
+✅ Best model updated (Val score = 0.9875)
+[Epoch 5] Loss: 0.0374, Train Fruit Acc: 0.9939, Train Health Acc: 0.9939, Val Fruit Acc: 0.9880, Val Health Acc: 0.9788, LR: 0.000100
+⚠️ No improvement for 1 epoch(s).
+[Epoch 6] Loss: 0.0455, Train Fruit Acc: 0.9938, Train Health Acc: 0.9937, Val Fruit Acc: 0.9497, Val Health Acc: 0.8744, LR: 0.000100
+⚠️ No improvement for 2 epoch(s).
+[Epoch 7] Loss: 0.1166, Train Fruit Acc: 0.9809, Train Health Acc: 0.9815, Val Fruit Acc: 0.9788, Val Health Acc: 0.9884, LR: 0.000100
+⚠️ No improvement for 3 epoch(s).
+[Epoch 8] Loss: 0.0134, Train Fruit Acc: 0.9977, Train Health Acc: 0.9985, Val Fruit Acc: 0.9938, Val Health Acc: 0.9938, LR: 0.000050
+✅ Best model updated (Val score = 0.9938)
+[Epoch 9] Loss: 0.0049, Train Fruit Acc: 0.9995, Train Health Acc: 0.9990, Val Fruit Acc: 0.9945, Val Health Acc: 0.9932, LR: 0.000050
+⚠️ No improvement for 1 epoch(s).
+[Epoch 10] Loss: 0.0051, Train Fruit Acc: 0.9991, Train Health Acc: 0.9992, Val Fruit Acc: 0.9904, Val Health Acc: 0.9959, LR: 0.000050
+⚠️ No improvement for 2 epoch(s).
+[Epoch 11] Loss: 0.0115, Train Fruit Acc: 0.9980, Train Health Acc: 0.9982, Val Fruit Acc: 0.9918, Val Health Acc: 0.9904, LR: 0.000050
+⚠️ No improvement for 3 epoch(s).
+[Epoch 12] Loss: 0.0050, Train Fruit Acc: 0.9994, Train Health Acc: 0.9992, Val Fruit Acc: 0.9942, Val Health Acc: 0.9938, LR: 0.000025
+✅ Best model updated (Val score = 0.9940)
+[Epoch 13] Loss: 0.0046, Train Fruit Acc: 0.9989, Train Health Acc: 0.9996, Val Fruit Acc: 0.9921, Val Health Acc: 0.9949, LR: 0.000025
+⚠️ No improvement for 1 epoch(s).
+[Epoch 14] Loss: 0.0017, Train Fruit Acc: 0.9999, Train Health Acc: 0.9994, Val Fruit Acc: 0.9938, Val Health Acc: 0.9962, LR: 0.000025
+✅ Best model updated (Val score = 0.9950)
+[Epoch 15] Loss: 0.0020, Train Fruit Acc: 0.9998, Train Health Acc: 0.9994, Val Fruit Acc: 0.9945, Val Health Acc: 0.9952, LR: 0.000025
+⚠️ No improvement for 1 epoch(s).
+[Epoch 16] Loss: 0.0024, Train Fruit Acc: 0.9997, Train Health Acc: 0.9995, Val Fruit Acc: 0.9945, Val Health Acc: 0.9938, LR: 0.000025
+⚠️ No improvement for 2 epoch(s).
+[Epoch 17] Loss: 0.0013, Train Fruit Acc: 0.9999, Train Health Acc: 0.9997, Val Fruit Acc: 0.9945, Val Health Acc: 0.9956, LR: 0.000025
+⚠️ No improvement for 3 epoch(s).
+[Epoch 18] Loss: 0.0008, Train Fruit Acc: 1.0000, Train Health Acc: 0.9999, Val Fruit Acc: 0.9942, Val Health Acc: 0.9935, LR: 0.000013
+⚠️ No improvement for 4 epoch(s).
+[Epoch 19] Loss: 0.0008, Train Fruit Acc: 0.9999, Train Health Acc: 0.9999, Val Fruit Acc: 0.9942, Val Health Acc: 0.9956, LR: 0.000013
+⚠️ No improvement for 5 epoch(s).
+⏹️ Early stopping triggered at epoch 19
