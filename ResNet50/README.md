@@ -13,6 +13,4 @@ This project uses a ResNet50-based deep learning model to classify **fruit types
 ├── ResNet50-fruit-disease.py  # Train the multi-task ResNet50 model
 ├── test_acc.py                 # Evaluate model accuracy on test set
 ├── multi_task_gradcam.py      # Generate Grad-CAM visualizations for misclassified images
-├── model/                      # Folder to save trained models
-├── results/                    # Folder to save Grad-CAM outputs
 └── README.md
